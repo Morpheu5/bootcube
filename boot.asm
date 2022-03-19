@@ -3,10 +3,10 @@
 bits 16     ; We're dealing with 16 bit code
 org 0x7C00  ; Inform the assembler of the starting location for this code
             ; This is just to generate the right addresses.
+    jmp 0:main ; And this is to make sure CS is in the right place.
 
 stackSize   equ 0x40                ; 0x40 (1024/16 stack size)
 stackBase   equ 0x7E0 + stackSize   ; 0x7E0 * 16 is the first available byte after the code
-
 
 main:
     ; Make sure the stack is ready, just in case we need it...
@@ -19,30 +19,32 @@ main:
     mov ax, 0x13
     int 10h
 
-    ; Draw a pixel on screen because we can - this will likely go away to save space...
+    ; Prepare the video segment
     mov ax, 0xA000
     mov es, ax
-    mov bx, 10
+    ; Calculate the offset into the video memory from the coordinates
+    push 100
+    push 160
+    call coords
+    add sp, 8 ; This is to empty the stack from the two parameters
+    ; Write a white pixel to the given ccordinates
+    mov bx, ax
     mov al, 7
     mov es:[bx], al
 
-    ; Run through all the colors several time and clear the screen each time
-    mov cx, 4096*4
-.loopsydo:
-    dec cx
-    jz .loop
-    push cx
-    call clearScreen
-    mov edx, 0x1000000
-.wasteTime:
-    dec edx
-    jnz .wasteTime
-    jmp .loopsydo
-
-    ; ... and curtains.
+; ... and curtains.
 .loop:
     jmp .loop
     hlt
+
+coords: ; This doesn't mess with the stack to reduce code size
+        ; NOTE: We COULD go straight for bx instead of ax and save a mov on ret
+        ;       but this would sort-of break convention and we'll see if this
+        ;       is a problem later.
+    mov ax, [bp-2]
+    imul ax, 320 ; Well, this is hard-coded. Tough luck.
+    add ax, [bp-4]
+    ret
 
     ; Needs the color on the stack
 clearScreen:
