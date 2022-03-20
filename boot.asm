@@ -25,25 +25,25 @@ main:
     ; Calculate the offset into the video memory from the coordinates
     push WORD 100 ; Make sure these are the right size
     push WORD 160
-    call coords
-    ; Write a white pixel to the given ccordinates
-    mov bx, ax
-    mov al, 7
-    mov es:[bx], al
+    call coords ; Returns into bx
+    mov al, 7 ; Sets color to white
+    call drawPixel ; Draws a white pixel to the given ccordinates
 
 ; ... and curtains.
 .loop:
     jmp .loop
     hlt
 
-coords: ; NOTE: We COULD go straight for bx instead of ax and save a mov on ret
-        ;       but this would sort-of break convention and we'll see if this
-        ;       is a problem later.
+coords: ; Returning into bx goes against convention but it makes for more compact code
     push bp
     mov bp, sp
-    imul ax, [bp + 6], 320 ; Well, this is hard-coded. Tough luck.
-    add ax, [bp + 4]
+    imul bx, [bp + 6], 320 ; Well, this is hard-coded. Tough luck.
+    add bx, [bp + 4]
     leave
+    ret
+
+drawPixel:
+    mov es:[bx], al
     ret
 
     ; Needs the color on the stack
@@ -66,3 +66,5 @@ clearScreen_loop:
 
 times 510-($-$$) db 0 ; Add enough padding to make 510 bytes in total
 db 0x55, 0xAA ; Boot magic number 0xAA55
+
+;;; 79 bytes
