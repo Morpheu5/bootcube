@@ -23,10 +23,9 @@ main:
     mov ax, 0xA000
     mov es, ax
     ; Calculate the offset into the video memory from the coordinates
-    push 100
-    push 160
+    push WORD 100 ; Make sure these are the right size
+    push WORD 160
     call coords
-    add sp, 8 ; This is to empty the stack from the two parameters
     ; Write a white pixel to the given ccordinates
     mov bx, ax
     mov al, 7
@@ -37,13 +36,14 @@ main:
     jmp .loop
     hlt
 
-coords: ; This doesn't mess with the stack to reduce code size
-        ; NOTE: We COULD go straight for bx instead of ax and save a mov on ret
+coords: ; NOTE: We COULD go straight for bx instead of ax and save a mov on ret
         ;       but this would sort-of break convention and we'll see if this
         ;       is a problem later.
-    mov ax, [bp-2]
-    imul ax, 320 ; Well, this is hard-coded. Tough luck.
-    add ax, [bp-4]
+    push bp
+    mov bp, sp
+    imul ax, [bp + 6], 320 ; Well, this is hard-coded. Tough luck.
+    add ax, [bp + 4]
+    leave
     ret
 
     ; Needs the color on the stack
