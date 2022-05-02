@@ -1,3 +1,4 @@
 *.c
 *.S
 *.bin
+.DS_Store
