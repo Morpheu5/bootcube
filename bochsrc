@@ -1,5 +1,6 @@
+cpu: count=1
 floppya: 1_44=boot.bin, status=inserted
 boot: a
 floppy_bootsig_check: disabled=1
-display_library: sdl2, options="gui_debug"
+display_library: sdl2
 magic_break: enabled=1
