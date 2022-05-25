@@ -5,8 +5,8 @@ org 0x7C00  ; Inform the assembler of the starting location for this code
             ; This is just to generate the right addresses.
     jmp 0:main ; And this is to make sure CS is in the right place.
 
-stackSize   equ 0x40                ; 0x40 (1024/16 stack size)
-stackBase   equ 0x800 + stackSize   ; 0x800 * 16 is a good location for the stack
+stackSize   equ 0x1000
+stackBase   equ 0x900    ; 0x9000 is a good location for the stack
 
 main:
     ; Make sure the stack is ready, just in case we need it...
@@ -39,13 +39,26 @@ main:
     call clearScreen
     add sp, 2
 
-    push 100 ; Make sure these are the right size
-    push 160
-    call coords ; Returns into bx
-    add sp, 4
-    ; Color the pixel on screen
-    mov al, 15 ; Sets color to white
-    drawPixel ; Draws a white pixel to the given ccordinates
+    finit
+
+    push dword 4
+    lea eax, [lineToDraw]
+    push eax
+    lea eax, [line]
+    push eax
+    lea eax, [rotMat]
+    push eax
+
+    call matMul
+    add sp, 16
+    debug
+    ; push 100 ; Make sure these are the right size
+    ; push 160
+    ; call coords ; Returns into bx
+    ; add sp, 4
+    ; ; Color the pixel on screen
+    ; mov al, 15 ; Sets color to white
+    ; drawPixel ; Draws a white pixel to the given ccordinates
 
 ; ... and curtains.
 exit:
@@ -53,62 +66,79 @@ exit:
     hlt
 
 matMul:
-        push    ebp
-        mov     ebp, esp
-        xor     ecx, ecx
-        push    edi
-        push    esi
-        xor     esi, esi
-        push    ebx
-        sub     esp, 16
-        movsx   ebx, byte [ebp+20]
-        mov     dword [ebp-20], ecx
-        lea     eax, [0+ebx*4]
-        mov     dword [ebp-28], eax
+        push bp
+        mov bp, sp
+        sub sp, 12
+
+        xor esi, esi
+        mov word [bp - 2], 0 ; i = 0
+    .L1:
+        cmp word [bp - 2], 4 ; i < 4
+        je .L1e
+
+        mov word [bp - 4], 0 ; j = 0
     .L2:
-        mov     edx, dword [ebp-20]
-        mov     eax, dword [ebp+16]
-        mov     edi, dword [ebp+8]
-        lea     eax, [eax+edx*4]
-        lea     edx, [edi+esi*4]
-        mov     dword [ebp-24], edx
-        xor     edx, edx
-        mov     dword [ebp-16], edx
-    .L6:
-        cmp     dword [ebp-16], ebx
-        jnb     .L10
-        mov     edi, dword [ebp-16]
-        mov     ecx, dword [ebp+12]
-        mov     dword [eax], 0x00000000
-        lea     ecx, [ecx+edi*4]
-        mov     edi, ecx
-        xor     ecx, ecx
+        mov ax, [bp + 16] ; ax = stride
+        cmp [bp - 4], ax ; j < stride
+        je .L2e
+
+        ; Calculate Cidx
+        mul word [bp - 2] ; stride * i -- This may result in overflows if the stride is too large
+        add ax, word [bp - 4] ; stride * i + j
+        shl ax, 2
+        mov [bp - 8], ax  ; Cidx = stride * i + j
+        ; Set C[Cidx] = 0.0
+        mov bx, ax ; ax can't be used in effective address calculations, apparently
+        add bx, [bp + 12]
+        mov dword [bx], 0
+    
+        mov word [bp - 6], 0 ; k = 0
     .L3:
-        mov     edx, dword [ebp-24]
-        fld     dword [edx+ecx*4]
-        fmul    dword [edi]
-        mov     edx, edi
-        inc     ecx
-        fadd    dword [eax]
-        mov     edi, dword [ebp-28]
-        add     edx, edi
-        mov     edi, edx
-        fstp    dword [eax]
-        cmp     ecx, 4
-        jne     .L3
-        inc     dword [ebp-16]
-        add     eax, 4
-        jmp     .L6
-    .L10:
-        add     esi, 4
-        add     dword [ebp-20], ebx
-        cmp     esi, 16
-        jne     .L2
-        add     esp, 16
-        pop     ebx
-        pop     esi
-        pop     edi
-        pop     ebp
+        cmp word [bp - 6], 4 ; k < 4
+        je .L3e
+
+        ; Calculate Bidx
+        mov ax, [bp + 16]
+        mul word [bp - 6]
+        add ax, word [bp - 4]
+        shl ax, 2
+        mov [bp - 10], ax
+        ; Calculate Aidx
+        mov ax, [bp - 2]
+        shl ax, 2
+        add ax, [bp - 4]
+        shl ax, 2
+        mov [bp - 12], ax
+        ; Time for the hard maths
+        mov si, [bp - 8]
+        add si, [bp + 12]
+        fld dword [si]
+        mov si, [bp - 10]
+        add si, [bp + 8]
+        fld dword [si]
+        mov si, [bp - 12]
+        add si, [bp + 4]
+        fld dword [si]
+        fmul
+        fadd
+        mov si, [bp - 8]
+        add si, [bp + 12]
+        fstp dword [si]
+
+        inc word [bp - 6] ; ++k
+        jmp .L3
+
+    .L3e:
+        inc word [bp - 4] ; ++j
+        jmp .L2
+
+    .L2e:
+        inc word [bp - 2] ; ++i
+        jmp .L1
+
+    .L1e:
+        ; debug
+        leave
         ret
 
 plotLine:
@@ -250,10 +280,12 @@ rotMat:
     dd  0.0  ,  0.0  ,  0.0  ,  1.0
 
 line:
-    dd  0.0  ,  0.0  ,  0.0  ,  1.0
-    dd  1.0  ,  0.0  ,  0.0  ,  1.0
+    dd  1.0  ,  0.0  ,  0.0  ,  0.0
+    dd  0.0  ,  1.0  ,  0.0  ,  0.0
+    dd  0.0  ,  0.0  ,  1.0  ,  0.0
+    dd  1.0  ,  1.0  ,  1.0  ,  1.0
 
 lineToDraw:
-    times 4 dd 0
+    times 16 dd 0x11111111
 
 times 1024-($-$$) db 0 ; Add enough padding to make 1024 bytes in total
