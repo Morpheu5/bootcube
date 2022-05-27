@@ -90,7 +90,7 @@ matMul:
         ; Set C[Cidx] = 0.0
         mov bx, ax ; ax can't be used in effective address calculations, apparently
         add bx, [bp + 12]
-        mov dword [bx], 0
+        mov dword [bx], 0 ; C[Cidx] = 0.0
     
         mov word [bp - 6], 0 ; k = 0
     .L3:
@@ -106,7 +106,7 @@ matMul:
         ; Calculate Aidx
         mov ax, [bp - 2]
         shl ax, 2
-        add ax, [bp - 4]
+        add ax, [bp - 6]
         shl ax, 2
         mov [bp - 12], ax
         ; Time for the hard maths
