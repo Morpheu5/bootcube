@@ -110,20 +110,20 @@ matMul:
         shl ax, 2
         mov [bp - 12], ax
         ; Time for the hard maths
-        mov si, [bp - 8]
-        add si, [bp + 12]
-        fld dword [si]
-        mov si, [bp - 10]
-        add si, [bp + 8]
-        fld dword [si]
-        mov si, [bp - 12]
-        add si, [bp + 4]
-        fld dword [si]
-        fmul
-        fadd
-        mov si, [bp - 8]
-        add si, [bp + 12]
-        fstp dword [si]
+        mov si, [bp - 8]  ; Cidx
+        add si, [bp + 12] ; C
+        fld dword [si]    ; fpush C[Cidx]
+        mov si, [bp - 10] ; Bidx
+        add si, [bp + 8]  ; B
+        fld dword [si]    ; fpush B[Bidx]
+        mov si, [bp - 12] ; Aidx
+        add si, [bp + 4]  ; A
+        fld dword [si]    ; fpush A[Aidx]
+        fmul              ; A[Aidx] * B[Bidx]
+        fadd              ; C[Cidx] + (A[Aidx] * B[Bidx])
+        mov si, [bp - 8]  ; Cidx
+        add si, [bp + 12] ; C
+        fstp dword [si]   ; C[Cidx] = C[Cidx] + (A[Aidx] * B[Bidx])
 
         inc word [bp - 6] ; ++k
         jmp .L3
