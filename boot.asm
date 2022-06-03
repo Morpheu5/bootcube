@@ -72,15 +72,15 @@ matMul:
 
         xor esi, esi
         mov word [bp - 2], 0 ; i = 0
-    .L1:
+    .rows_loop:
         cmp word [bp - 2], 4 ; i < 4
-        je .L1e
+        je .rows_loop_end
 
         mov word [bp - 4], 0 ; j = 0
-    .L2:
+    .cols_loop:
         mov ax, [bp + 16] ; ax = stride
         cmp [bp - 4], ax ; j < stride
-        je .L2e
+        je .cols_loop_end
 
         ; Calculate Cidx
         mul word [bp - 2] ; stride * i -- This may result in overflows if the stride is too large
@@ -93,9 +93,9 @@ matMul:
         mov dword [bx], 0 ; C[Cidx] = 0.0
     
         mov word [bp - 6], 0 ; k = 0
-    .L3:
+    .dot_loop:
         cmp word [bp - 6], 4 ; k < 4
-        je .L3e
+        je .dot_loop_end
 
         ; Calculate Bidx
         mov ax, [bp + 16]
@@ -126,17 +126,17 @@ matMul:
         fstp dword [si]   ; C[Cidx] = C[Cidx] + (A[Aidx] * B[Bidx])
 
         inc word [bp - 6] ; ++k
-        jmp .L3
+        jmp .dot_loop
 
-    .L3e:
+    .dot_loop_end:
         inc word [bp - 4] ; ++j
-        jmp .L2
+        jmp .cols_loop
 
-    .L2e:
+    .cols_loop_end:
         inc word [bp - 2] ; ++i
-        jmp .L1
+        jmp .rows_loop
 
-    .L1e:
+    .rows_loop_end:
         ; debug
         leave
         ret
