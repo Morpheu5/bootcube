@@ -274,18 +274,18 @@ times 510-($-$$) db 0 ; Add enough padding to make 510 bytes in total
 db 0x55, 0xAA ; Boot magic number 0xAA55
 
 rotMat:
-    dd  0.5  , -0.707,  0.0  ,  0.0
-    dd  0.707,  0.5  ,  0.0  ,  0.0
+    dd  0.707, -0.707,  0.0  ,  0.0
+    dd  0.707,  0.707,  0.0  ,  0.0
     dd  0.0  ,  0.0  ,  1.0  ,  0.0
     dd  0.0  ,  0.0  ,  0.0  ,  1.0
 
 line:
-    dd  1.0  ,  0.0  ,  0.0  ,  0.0
-    dd  0.0  ,  1.0  ,  0.0  ,  0.0
+    dd  1.0  ,  0.0  ,  0.0  ,  0.707
+    dd  0.0  ,  1.0  ,  0.0  ,  0.707
     dd  0.0  ,  0.0  ,  1.0  ,  0.0
     dd  1.0  ,  1.0  ,  1.0  ,  1.0
 
 lineToDraw:
-    times 16 dd 0x11111111
+    times 16 dd 0
 
 times 1024-($-$$) db 0 ; Add enough padding to make 1024 bytes in total
