@@ -41,7 +41,8 @@ main:
 
     finit
 
-    push dword 4
+    push word 1
+    push word 4
     lea eax, [lineToDraw]
     push eax
     lea eax, [line]
@@ -137,7 +138,60 @@ matMul:
         jmp .rows_loop
 
     .rows_loop_end:
-        ; debug
+        cmp word [bp + 18], 1
+        jne .fn_end
+
+        ; Calculate Hidx_base = 4 * (stride - 1)
+        mov ax, [bp + 16] ; ax = stride
+        dec ax            ; ax = stride - 1
+        shl ax, 2         ; ax = 4 * (stride - 1)
+        mov word [bp - 12], ax
+
+        mov bx, word [bp + 12] ; C
+
+        mov word [bp - 4], 0 ; j = 0
+    .hj_loop:
+        mov ax, [bp + 16] ; ax = stride
+        cmp word [bp - 4], ax ; j < stride
+        je .fn_end
+
+        ; Calculate Hidx = Hidx_base + j
+        mov ax, [bp - 12] ; ax = Hidx_base
+        add ax, [bp - 4]  ; ax = Hidx_base + j
+        shl ax, 2         ; ax = 4 * (Hidx_base + j)
+        mov word [bp - 10], ax ; Hidx = (Hidx_base + j) * 4
+    
+        mov word [bp - 2], 0 ; i = 0
+    .hi_loop:
+        cmp word [bp - 2], 4 ; i < 4
+        je .hi_loop_end
+
+        ; Calculate Cidx = stride * i + j
+        mov ax, [bp + 16] ; ax = stride
+        mul word [bp - 2] ; ax = stride * i
+        add ax, [bp - 4] ; ax = stride * i + j
+        shl ax, 2 ; Cidx = 4 * (stride * i + j)
+
+        ; Time for some more hard maths
+        mov si, ax
+        add si, bx
+        fld dword [si] ; fpush C[Cidx]
+        mov si, word [bp - 10]
+        add si, bx
+        fld dword [si]  ; fpush C[Hidx]
+        fdivp           ; result in ST(0)
+        mov si, ax
+        add si, bx
+        fstp dword [si] ; C[Hidx] /= h
+
+        inc word [bp - 2] ; ++i
+        jmp .hi_loop
+
+    .hi_loop_end:
+        inc word [bp - 4] ; ++j
+        jmp .hj_loop
+
+    .fn_end:
         leave
         ret
 
@@ -228,6 +282,25 @@ plotLine:
     leave
     ret
 
+; Needs the color on the stack
+times 510-($-$$) db 0 ; Add enough padding to make 510 bytes in total
+db 0x55, 0xAA ; Boot magic number 0xAA55
+
+rotMat:
+    dd  0.707, -0.707,  0.0  ,  0.0
+    dd  0.707,  0.707,  0.0  ,  0.0
+    dd  0.0  ,  0.0  ,  1.0  ,  0.0
+    dd  0.0  ,  0.0  ,  0.0  ,  1.0
+
+line:
+    dd  1.0  ,  0.0  ,  0.0  ,  0.707
+    dd  0.0  ,  1.0  ,  0.0  ,  0.707
+    dd  0.0  ,  0.0  ,  1.0  ,  0.0
+    dd  4.0  ,  2.0  ,  1.0  ,  1.0
+
+lineToDraw:
+    times 16 dd 0
+
 absw: ; WARNING This changes bx
     mov bx, ax
     neg ax
@@ -251,7 +324,6 @@ coords: ; Returning into bx goes against convention but it makes for more compac
     leave
     ret
 
-; Needs the color on the stack
 clearScreen:
     push bp
     mov bp, sp
@@ -266,26 +338,5 @@ clearScreen:
         mov es:bx, al
         pop bp
         ret
-
-
-
-
-times 510-($-$$) db 0 ; Add enough padding to make 510 bytes in total
-db 0x55, 0xAA ; Boot magic number 0xAA55
-
-rotMat:
-    dd  0.707, -0.707,  0.0  ,  0.0
-    dd  0.707,  0.707,  0.0  ,  0.0
-    dd  0.0  ,  0.0  ,  1.0  ,  0.0
-    dd  0.0  ,  0.0  ,  0.0  ,  1.0
-
-line:
-    dd  1.0  ,  0.0  ,  0.0  ,  0.707
-    dd  0.0  ,  1.0  ,  0.0  ,  0.707
-    dd  0.0  ,  0.0  ,  1.0  ,  0.0
-    dd  1.0  ,  1.0  ,  1.0  ,  1.0
-
-lineToDraw:
-    times 16 dd 0
 
 times 1024-($-$$) db 0 ; Add enough padding to make 1024 bytes in total
