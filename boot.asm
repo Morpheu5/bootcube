@@ -297,7 +297,6 @@ signCmp: ; signCmp(di, si)
     xor ax, ax
     cmp di, si   ; sub di, si  ->  di < si ?  ->  a < b ?
     setl al      ; a < b ? al = 1 : al = 0
-    xchg bx, bx
     add ax, ax   ; ax + ax  ->  ax == 0 ? 0 : 2
     dec ax       ; ax--  ->  ax == 0 ? -1 : 1
     ret
