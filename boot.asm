@@ -5,10 +5,10 @@ org 0x7C00  ; Inform the assembler of the starting location for this code
             ; This is just to generate the right addresses.
     jmp 0:main ; And this is to make sure CS is in the right place.
 
-stackSize   equ 0x1000
-stackBase   equ 0x900    ; 0x9000 is a good location for the stack
-Cols equ 320
-Rows equ 100
+stackSize equ 0x1000
+stackBase equ 0x900 ; 0x9000 is a good location for the stack
+Cols      equ 320
+Rows      equ 200
 
 main:
     ; Make sure the stack is ready, just in case we need it...
@@ -78,7 +78,7 @@ matMul:
         mov bp, sp
         sub sp, 12
 
-        xor esi, esi
+        xor si, si
         mov word [bp - 2], 0 ; i = 0
     .rows_loop:
         cmp word [bp - 2], 4 ; i < 4
@@ -325,7 +325,7 @@ worldToScreen:
         shr ax, 1
         mov word [bp - 2], ax
 
-        xor esi, esi
+        xor si, si
         xor cx, cx ; c = 0
     .loop:
         cmp cx, [bp - 2] ; c < n/2
@@ -342,23 +342,27 @@ worldToScreen:
 
         ; Time for some more hard maths
         mov si, cx
+        shl si, 2
         add si, bx ; C[c]
         fld dword [si] ; fpush C[c]
         fild dword [cols]
         fmulp
         frndint
         mov si, [bp - 4]
+        shl si, 2
         add si, dx ; D[Didx]
         fistp dword [si]
         add dword [si], Cols/2
 
         mov si, [bp - 8]
+        shl si, 2
         add si, bx ; C[Cidx]
         fld dword [si]
         fild dword [rows]
         fmulp
         frndint
         mov si, [bp - 6]
+        shl si, 2
         add si, dx ; D[Didx_1]
         fistp dword [si]
         add dword [si], Rows/2
