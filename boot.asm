@@ -43,6 +43,31 @@ main:
 
     finit
 
+    push word 8
+    push dword 0x8200
+    lea eax, [model]
+    push dword eax
+    call worldToScreen
+    add sp, 10
+
+    mov cx, 0
+loopsydaisy:
+    cmp cx, 8
+    je endsydaisy
+    mov si, cx
+    shl si, 1
+    add si, 0x8200
+    push word [si+6]
+    push word [si+4]
+    push word [si+2]
+    push word [si]
+    call plotLine
+    add sp, 8
+
+    add cx, 4
+    jmp loopsydaisy
+endsydaisy:
+
     push word 1
     push word 4
     push dword 0x8000 ; C
@@ -59,7 +84,7 @@ main:
     call worldToScreen
     add sp, 10
     
-    debug
+    ; debug
 
     ; push 100 ; Make sure these are the right size
     ; push 160
@@ -217,8 +242,8 @@ rotMat:
     dd  0.0  ,  0.0  ,  0.0  ,  1.0
 
 model:
-    dd  1.0  ,  0.0  ,  0.0  ,  0.707
-    dd  0.0  ,  1.0  ,  0.0  ,  0.707
+    dd  0.0  ,  0.0  , -0.5  ,  0.5
+    dd -0.5  ,  0.5  ,  0.0  ,  0.0
     dd  0.0  ,  0.0  ,  1.0  ,  0.0
     dd  1.0  ,  1.0  ,  1.0  ,  1.0
 
