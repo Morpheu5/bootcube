@@ -58,7 +58,9 @@ main:
     push dword 0x8000 ; C
     call worldToScreen
     add sp, 10
+    
     debug
+
     ; push 100 ; Make sure these are the right size
     ; push 160
     ; call coords ; Returns into bx
@@ -260,10 +262,10 @@ worldToScreen:
         fmulp
         frndint
         mov si, [bp - 4]
-        shl si, 2
+        shl si, 1
         add si, dx ; D[Didx]
-        fistp dword [si]
-        add dword [si], Cols/2
+        fistp word [si]
+        add word [si], Cols/2
 
         mov si, [bp - 8]
         shl si, 2
@@ -273,10 +275,10 @@ worldToScreen:
         fmulp
         frndint
         mov si, [bp - 6]
-        shl si, 2
+        shl si, 1
         add si, dx ; D[Didx_1]
-        fistp dword [si]
-        add dword [si], Rows/2
+        fistp word [si]
+        add word [si], Rows/2
     
         inc cx
         jmp .loop
