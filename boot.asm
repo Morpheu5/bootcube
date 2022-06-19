@@ -7,6 +7,8 @@ org 0x7C00  ; Inform the assembler of the starting location for this code
 
 stackSize   equ 0x1000
 stackBase   equ 0x900    ; 0x9000 is a good location for the stack
+Cols equ 320
+Rows equ 100
 
 main:
     ; Make sure the stack is ready, just in case we need it...
@@ -43,8 +45,7 @@ main:
 
     push word 1
     push word 4
-    lea eax, 0x8000 ; C
-    push eax
+    push dword 0x8000 ; C
     lea eax, [model]
     push eax
     lea eax, [rotMat]
@@ -52,6 +53,12 @@ main:
 
     call matMul
     add sp, 16
+
+    push word 8 ; n
+    push dword 0x8200 ; D
+    push dword 0x8000 ; C
+    call worldToScreen
+    add sp, 10
     debug
     ; push 100 ; Make sure these are the right size
     ; push 160
@@ -287,20 +294,81 @@ times 510-($-$$) db 0 ; Add enough padding to make 510 bytes in total
 db 0x55, 0xAA ; Boot magic number 0xAA55
 
 rotMat:
-    dd  0.999848,  0.0     , -0.017452,  0.0 ; rotates 1 degree on the y axis which should be the one going up
-    dd  0.0     ,  1.0     ,  0.0     ,  0.0
-    dd  0.017452,  0.0     ,  0.999848,  0.0
-    dd  0.0     ,  0.0     ,  0.0     ,  1.0
-    ; dd  0.707, -0.707,  0.0  ,  0.0 ; This one is good for testing
-    ; dd  0.707,  0.707,  0.0  ,  0.0
-    ; dd  0.0  ,  0.0  ,  1.0  ,  0.0
-    ; dd  0.0  ,  0.0  ,  0.0  ,  1.0
+    ; dd  0.999848,  0.0     , -0.017452,  0.0 ; rotates 1 degree on the y axis which should be the one going up
+    ; dd  0.0     ,  1.0     ,  0.0     ,  0.0
+    ; dd  0.017452,  0.0     ,  0.999848,  0.0
+    ; dd  0.0     ,  0.0     ,  0.0     ,  1.0
+    dd  0.707, -0.707,  0.0  ,  0.0 ; This one is good for testing
+    dd  0.707,  0.707,  0.0  ,  0.0
+    dd  0.0  ,  0.0  ,  1.0  ,  0.0
+    dd  0.0  ,  0.0  ,  0.0  ,  1.0
 
 model:
     dd  1.0  ,  0.0  ,  0.0  ,  0.707
     dd  0.0  ,  1.0  ,  0.0  ,  0.707
     dd  0.0  ,  0.0  ,  1.0  ,  0.0
     dd  1.0  ,  1.0  ,  1.0  ,  1.0
+
+cols: dd Cols/2
+rows: dd Rows/2
+
+worldToScreen:
+        push bp
+        mov bp, sp
+        sub sp, 8
+
+        mov bx, [bp + 4]
+        mov dx, [bp + 8]
+
+        ; Calculate n/2
+        mov ax, word [bp + 12]
+        shr ax, 1
+        mov word [bp - 2], ax
+
+        xor esi, esi
+        xor cx, cx ; c = 0
+    .loop:
+        cmp cx, [bp - 2] ; c < n/2
+        je .loop_end
+
+        mov ax, cx
+        shl ax, 1
+        mov word [bp - 4], ax ; Didx = c * 2
+        inc ax
+        mov word [bp - 6], ax ; Didx_1 = c * 2 + 1
+        mov ax, cx
+        add ax, word [bp - 2] ; Cidx = c + n_2
+        mov word [bp - 8], ax
+
+        ; Time for some more hard maths
+        mov si, cx
+        add si, bx ; C[c]
+        fld dword [si] ; fpush C[c]
+        fild dword [cols]
+        fmulp
+        frndint
+        mov si, [bp - 4]
+        add si, dx ; D[Didx]
+        fistp dword [si]
+        add dword [si], Cols/2
+
+        mov si, [bp - 8]
+        add si, bx ; C[Cidx]
+        fld dword [si]
+        fild dword [rows]
+        fmulp
+        frndint
+        mov si, [bp - 6]
+        add si, dx ; D[Didx_1]
+        fistp dword [si]
+        add dword [si], Rows/2
+    
+        inc cx
+        jmp .loop
+
+    .loop_end:
+        leave
+        ret
 
 absw: ; WARNING This changes bx
     mov bx, ax
