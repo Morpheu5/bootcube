@@ -43,9 +43,9 @@ main:
 
     push word 1
     push word 4
-    lea eax, [lineToDraw]
+    lea eax, 0x8000 ; C
     push eax
-    lea eax, [line]
+    lea eax, [model]
     push eax
     lea eax, [rotMat]
     push eax
@@ -287,19 +287,20 @@ times 510-($-$$) db 0 ; Add enough padding to make 510 bytes in total
 db 0x55, 0xAA ; Boot magic number 0xAA55
 
 rotMat:
-    dd  0.707, -0.707,  0.0  ,  0.0
-    dd  0.707,  0.707,  0.0  ,  0.0
-    dd  0.0  ,  0.0  ,  1.0  ,  0.0
-    dd  0.0  ,  0.0  ,  0.0  ,  1.0
+    dd  0.999848,  0.0     , -0.017452,  0.0 ; rotates 1 degree on the y axis which should be the one going up
+    dd  0.0     ,  1.0     ,  0.0     ,  0.0
+    dd  0.017452,  0.0     ,  0.999848,  0.0
+    dd  0.0     ,  0.0     ,  0.0     ,  1.0
+    ; dd  0.707, -0.707,  0.0  ,  0.0 ; This one is good for testing
+    ; dd  0.707,  0.707,  0.0  ,  0.0
+    ; dd  0.0  ,  0.0  ,  1.0  ,  0.0
+    ; dd  0.0  ,  0.0  ,  0.0  ,  1.0
 
-line:
+model:
     dd  1.0  ,  0.0  ,  0.0  ,  0.707
     dd  0.0  ,  1.0  ,  0.0  ,  0.707
     dd  0.0  ,  0.0  ,  1.0  ,  0.0
-    dd  4.0  ,  2.0  ,  1.0  ,  1.0
-
-lineToDraw:
-    times 16 dd 0
+    dd  1.0  ,  1.0  ,  1.0  ,  1.0
 
 absw: ; WARNING This changes bx
     mov bx, ax
