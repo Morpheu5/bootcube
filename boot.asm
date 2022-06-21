@@ -43,13 +43,25 @@ main:
 
     finit
 
+    ; matMul(rotation, model, 0x8000, 4, 1)
+    push word 1
+    push word 4
+    push dword 0x8000 ; C
+    lea eax, [model]
+    push eax
+    lea eax, [rotation]
+    push eax
+    call matMul
+    add sp, 16
+
+    ; worldToScreen(0x8000, 0x8200, 8)
     push word 8
     push dword 0x8200
-    lea eax, [model]
-    push dword eax
+    push dword 0x8000
     call worldToScreen
     add sp, 10
 
+    ; Draw what is at 0x8200
     mov cx, 0
 loopsydaisy:
     cmp cx, 8
@@ -67,32 +79,6 @@ loopsydaisy:
     add cx, 4
     jmp loopsydaisy
 endsydaisy:
-
-    push word 1
-    push word 4
-    push dword 0x8000 ; C
-    lea eax, [model]
-    push eax
-    lea eax, [rotMat]
-    push eax
-    call matMul
-    add sp, 16
-
-    push word 8 ; n
-    push dword 0x8200 ; D
-    push dword 0x8000 ; C
-    call worldToScreen
-    add sp, 10
-    
-    ; debug
-
-    ; push 100 ; Make sure these are the right size
-    ; push 160
-    ; call coords ; Returns into bx
-    ; add sp, 4
-    ; ; Color the pixel on screen
-    ; mov al, 15 ; Sets color to white
-    ; drawPixel ; Draws a white pixel to the given ccordinates
 
 ; ... and curtains.
 exit:
@@ -231,7 +217,7 @@ matMul:
 times 510-($-$$) db 0 ; Add enough padding to make 510 bytes in total
 db 0x55, 0xAA ; Boot magic number 0xAA55
 
-rotMat:
+rotation:
     ; dd  0.999848,  0.0     , -0.017452,  0.0 ; rotates 1 degree on the y axis which should be the one going up
     ; dd  0.0     ,  1.0     ,  0.0     ,  0.0
     ; dd  0.017452,  0.0     ,  0.999848,  0.0
