@@ -44,8 +44,8 @@ main:
     finit
 
     ; matMul(rotation, model, 0x8000, 4, 1)
-    push word 1
-    push word 4
+    push dword 0x00010004
+    ; ^--- push word 4
     push dword 0x8000 ; C
     lea eax, [model]
     push eax
@@ -69,10 +69,10 @@ loopsydaisy:
     mov si, cx
     shl si, 1
     add si, 0x8200
-    push word [si+6]
-    push word [si+4]
-    push word [si+2]
-    push word [si]
+    ; v--- push word [si+6]
+    push dword [si+4]
+    ; v--- push word [si+2]
+    push dword [si]
     call plotLine
     add sp, 8
 
