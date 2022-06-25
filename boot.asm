@@ -304,7 +304,7 @@ worldToScreen:
         fmulp
         frndint
         mov si, [bp - 2]
-        shl si, 2
+        shl si, 1
         add si, dx ; D[Didx]
         fistp word [si]
         add word [si], Cols/2
@@ -333,7 +333,7 @@ worldToScreen:
         fmulp
         frndint
         mov si, [bp - 2]
-        shl si, 2
+        shl si, 1
         add si, dx ; D[Didx]
         fistp word [si]
         add word [si], Rows/2
