@@ -21,7 +21,7 @@ main:
     xor ah, ah  ; Reset floppy controller
     int 0x13
 
-    mov ax, 0x201 ; Load sector 2 from the boot drive
+    mov ax, 0x202 ; Load sector 2 from the boot drive
     mov cx, 0x2   ; Somehow, the sectors start counting from 1, so the second one is number 2...
     xor dh, dh
     xor bx, bx
@@ -37,15 +37,33 @@ main:
     mov ax, 0xA000
     mov es, ax
 
-    mov dx, 54
-    call clearScreen
+    ; mov dx, 54
+    ; call clearScreen
 
     finit
 
-    ; matMul(rotation, model, 0x8000, 8, 0)
+    mov dword [0x8380], 0
+drawLoop:
+    mov dx, 54
+    call clearScreen
+
+    fld dword [0x8380]
+    fld dword [rotationAngle]
+    fadd st0, st1
+    fst dword [0x8380]
+    fsincos
+    lea si, [rotation]
+    fst dword [si]
+    fstp dword [si + 40]
+    fst dword [si + 32]
+    fchs
+    fstp dword [si + 8]
+
+drawLoopContinues:
+    ; matMul(rotation, model, 0x8200, 8, 0)
     push dword 0x00000008
     ; ^--- push word 8
-    push dword 0x8000 ; C
+    push dword 0x8200 ; C
     lea eax, [model]
     push eax
     lea eax, [rotation]
@@ -53,31 +71,31 @@ main:
     call matMul
     add sp, 16
 
-    ; matMul(projection, 0x8000, 0x8080, 8, 1)
+    ; matMul(projection, 0x8200, 0x8280, 8, 1)
     push dword 0x00010008
     ; ^--- push word 8
-    push dword 0x8080 ; C
-    push dword 0x8000
+    push dword 0x8280 ; C
+    push dword 0x8200
     lea eax, [projection]
     push eax
     call matMul
     add sp, 16
 
-    ; worldToScreen(0x8080, 0x8100, 8)
+    ; worldToScreen(0x8280, 0x8300, 8)
     push word 8
-    push dword 0x8100
-    push dword 0x8080
+    push dword 0x8300
+    push dword 0x8280
     call worldToScreen
     add sp, 10
 
-    ; Draw what is at 0x8200
+    ; Draw what is at 0x8300
     mov cx, 0
 loopsydaisy:
     cmp cx, 16
     je endsydaisy
     mov si, cx
     shl si, 1
-    add si, 0x8100
+    add si, 0x8300
     ; v--- push word [si+6]
     push dword [si+4]
     ; v--- push word [si+2]
@@ -88,24 +106,15 @@ loopsydaisy:
     add cx, 4
     jmp loopsydaisy
 endsydaisy:
-
+    ; debug
 ; ... and curtains.
-exit:
-    jmp exit
-
-absw: ; WARNING This changes bx
-    mov bx, ax
-    neg ax
-    cmovl ax, bx ; if bx is negative, restore it, otherwise it was positive
-    ret
-
-signCmp: ; signCmp(di, si)
-    xor ax, ax
-    cmp di, si   ; sub di, si  ->  di < si ?  ->  a < b ?
-    setl al      ; a < b ? al = 1 : al = 0
-    add ax, ax   ; ax + ax  ->  ax == 0 ? 0 : 2
-    dec ax       ; ax--  ->  ax == 0 ? -1 : 1
-    ret
+back:
+    mov ecx, 0x800000
+waste:
+    nop
+    dec ecx
+    jnz waste
+    jmp drawLoop
 
 matMul:
         push bp
@@ -236,47 +245,11 @@ matMul:
         leave
         ret
 
-rotation:
-    ; dd  0.999848,  0.0     , -0.017452,  0.0 ; rotates 1 degree on the y axis which should be the one going up
-    ; dd  0.0     ,  1.0     ,  0.0     ,  0.0
-    ; dd  0.017452,  0.0     ,  0.999848,  0.0
-    ; dd  0.0     ,  0.0     ,  0.0     ,  1.0
-    ; dd  0.707, -0.707,  0.0  ,  0.0 ; This one is good for testing
-    ; dd  0.707,  0.707,  0.0  ,  0.0
-    ; dd  0.0  ,  0.0  ,  1.0  , -5.0
-    ; dd  0.0  ,  0.0  ,  0.0  ,  1.0
-    dd  0.5  ,  0.0  ,  0.0  ,  0.0 ; This one is good for testing
-    dd  0.0  ,  0.5  ,  0.0  ,  0.0
-    dd  0.0  ,  0.0  ,  0.5  ,  0.0
-    dd  0.0  ,  0.0  ,  0.0  ,  1.0
     
 times 510-($-$$) db 0 ; Add enough padding to make 510 bytes in total
 db 0x55, 0xAA ; Boot magic number 0xAA55
 
-; translation:
-;     dd  1.0     ,  0.0     ,  0.0     ,  0.0
-;     dd  0.0     ,  1.0     ,  0.0     ,  0.0
-;     dd  0.0     ,  0.0     ,  1.0     , -5.0
-;     dd  0.0     ,  0.0     ,  0.0     ,  1.0
-
-projection:
-    ; dd  1.12037,  0.0    ,  0.0    ,  0.0
-    ; dd  0.0    ,  1.79259,  0.0    ,  0.0
-    ; dd  0.0    ,  0.0    , -1.0202 , -0.20202
-    ; dd  0.0    ,  0.0    , -1.0    ,  0.0
-    dd  1.0  ,  0.0  ,  0.0  ,  0.0 ; This one is good for testing
-    dd  0.0  ,  1.0  ,  0.0  ,  0.0
-    dd  0.0  ,  0.0  ,  1.0  ,  0.0
-    dd  0.0  ,  0.0  ,  0.0  ,  1.0
-
-model:
-    dd -1.0  ,  1.0  , -1.0  ,  1.0  , -1.0  ,  1.0  , -1.0  ,  1.0
-    dd -1.0  , -1.0  ,  1.0  ,  1.0  , -1.0  , -1.0  ,  1.0  ,  1.0
-    dd  1.0  ,  1.0  ,  1.0  ,  1.0  , -1.0  , -1.0  , -1.0  , -1.0
-    dd  1.0  ,  1.0  ,  1.0  ,  1.0  ,  1.0  ,  1.0  ,  1.0  ,  1.0
-
-cols: dw Cols/2
-rows: dw Rows/2
+; 0x7e00
 
 worldToScreen:
         push bp
@@ -438,8 +411,54 @@ clearScreen: ; Color in dx
         dec bx
         jnz .loop
 
-        xor bx, bx
-        mov es:bx, dl
-        ret    
+        ; xor bx, bx
+        ; mov es:bx, dl
+        ret
+
+absw: ; WARNING This changes bx
+    mov bx, ax
+    neg ax
+    cmovl ax, bx ; if bx is negative, restore it, otherwise it was positive
+    ret
+
+signCmp: ; signCmp(di, si)
+    xor ax, ax
+    cmp di, si   ; sub di, si  ->  di < si ?  ->  a < b ?
+    setl al      ; a < b ? al = 1 : al = 0
+    add ax, ax   ; ax + ax  ->  ax == 0 ? 0 : 2
+    dec ax       ; ax--  ->  ax == 0 ? -1 : 1
+    ret
 
 times 1024-($-$$) db 0 ; Add enough padding to make 1024 bytes in total
+
+; 0x8000
+
+rotation:
+    dd  1.0     ,  0.0     , -0.0     ,  0.0 ; rotates on the y axis which should be the one going up
+    dd  0.0     ,  1.0     ,  0.0     ,  0.0
+    dd  0.0     ,  0.0     ,  1.0     ,  5.0 ; also translates 5 units along the z axis
+    dd  0.0     ,  0.0     ,  0.0     ,  1.0
+;     ; dd  0.707,  0 0  , -0.707,  0.0 ; This one is good for testing
+;     ; dd  0.0  ,  1.0  ,  0.0  ,  0.0
+;     ; dd  0.707,  0.0  ,  0.707,  5.0
+;     ; dd  0.0  ,  0.0  ,  0.0  ,  1.0
+
+projection: ; This is where the movie magic happens!
+    dd  1.12037,  0.0    ,  0.0    ,  0.0
+    dd  0.0    ,  1.79259,  0.0    ,  0.0
+    dd  0.0    ,  0.0    , -1.0202 , -0.20202
+    dd  0.0    ,  0.0    , -1.0    ,  0.0
+
+model:
+    dd -1.0  ,  1.0  ,  1.0  , -1.0  ,  1.0  , -1.0  , -1.0  ,  1.0
+    dd -1.0  , -1.0  ,  1.0  ,  1.0  , -1.0  , -1.0  ,  1.0  ,  1.0
+    dd  1.0  ,  1.0  ,  1.0  ,  1.0  , -1.0  , -1.0  , -1.0  , -1.0
+    dd  1.0  ,  1.0  ,  1.0  ,  1.0  ,  1.0  ,  1.0  ,  1.0  ,  1.0
+
+cols: dw Cols/2
+rows: dw Rows/2
+rotationAngle: dd 0.017453
+
+times 1536-($-$$) db 0
+
+; 0x8200
